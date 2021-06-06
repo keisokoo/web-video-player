@@ -1,0 +1,10 @@
+.DS_*
+*.log
+logs
+**/*.backup.*
+**/*.back.*
+.idea/
+src/url.ts
+
+node_modules
+build
