@@ -6,7 +6,7 @@ const CssMinimizerPlugin = require('css-minimizer-webpack-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
 
 const node_env = process.env.NODE_ENV ?? 'development'
-
+console.log('node_env', node_env)
 module.exports = {
   mode: node_env,
   entry: './src/index.tsx',

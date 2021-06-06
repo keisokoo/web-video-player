@@ -50,15 +50,32 @@ const VideoComponent = (props: VideoProps) => {
     set_rotate((prev) =>
       prev === 0 ? 90 : prev === 90 ? 180 : prev === 180 ? 270 : 0
     )
+  function toggleFullScreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen()
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+      }
+    }
+  }
   return (
     <>
       {videoSrc && (
         <div className="video-wrap">
           <div className="video-control">
-            <button onClick={prev}>이전</button>
-            <button onClick={next}>다음</button>
-            <button onClick={toggle_cover}>확장</button>
-            <button onClick={toggle_rotate}>회전</button>
+            <div className="left">
+              <button onClick={props.dropVideo}>닫기</button>
+            </div>
+            <div className="middle">
+              <button onClick={toggle_cover}>확장</button>
+              <button onClick={toggle_rotate}>회전</button>
+              <button onClick={toggleFullScreen}>전체</button>
+            </div>
+            <div className="right">
+              <button onClick={prev}>이전</button>
+              <button onClick={next}>다음</button>
+            </div>
           </div>
           <video
             ref={video_ref}

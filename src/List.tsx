@@ -112,14 +112,14 @@ const List = (props: ListProps) => {
     }
   }, [fetch])
   const dropVideo = () => {
+    window.location.hash = ''
     setVideoItem(null)
+    setVideoInitIndex(null)
   }
   useEffect(() => {
     function closeVideo(event: any) {
       if (event.key.toLowerCase().includes('esc')) {
-        window.location.hash = ''
-        setVideoItem(null)
-        setVideoInitIndex(null)
+        dropVideo()
       }
     }
     if (videoItem) {
