@@ -27,8 +27,7 @@ const UpdateButton = () => {
   const callUpdate = async () => {
     set_canUpdate(false)
     interval.current = setInterval(loadingDot, 1000)
-    const response = await callAxios('/update')
-    console.log('response', response)
+    await callAxios('/update')
     clearInterval(interval.current)
     set_updateText('완료')
     setTimeout(() => {

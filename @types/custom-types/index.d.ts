@@ -8,6 +8,10 @@ declare module 'custom-types' {
     type: string
     src?: string
     index?: number
+    atimeMs: number
+    mtimeMs: number
+    ctimeMs: number
+    birthtimeMs: number
   }
   export namespace customTypes {
     type foo = string

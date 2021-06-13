@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  MutableRefObject,
+} from 'react'
 import useFetch from './hooks/useFetch'
 
 import Video from './Video'
@@ -10,7 +16,9 @@ import { targetFolderName } from './url'
 interface ListProps {
   initialApiPath: string
 }
+const limit = 2
 const List = (props: ListProps) => {
+  const more_ref = useRef() as MutableRefObject<HTMLButtonElement>
   const [videoInitIndex, setVideoInitIndex] = useState(null as null | number)
   useEffect(() => {
     function changeHistory(event?: PopStateEvent) {
@@ -31,10 +39,32 @@ const List = (props: ListProps) => {
         setVideoInitIndex(Number(window.location.hash.slice(1)))
       }
     }
-    console.log(window?.location?.hash)
+    const withNext = () => {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(true)
+        }, 500)
+      })
+    }
+    const callback = async function (mutationsList: any, observer: any) {
+      for (const mutation of mutationsList) {
+        if (mutation.isIntersecting) {
+          observer.unobserve(mutation.target)
+          set_page((prev) => {
+            const nextPage = prev + 1
+            return nextPage
+          })
+          await withNext()
+          observer.observe(mutation.target)
+        }
+      }
+    }
     changeHistory()
     window.addEventListener('popstate', changeHistory)
+    let observer = new IntersectionObserver(callback)
+    observer.observe(more_ref.current)
     return () => {
+      observer && observer.disconnect()
       window.removeEventListener('popstate', changeHistory)
     }
   }, [])
@@ -44,6 +74,7 @@ const List = (props: ListProps) => {
   const [dirList, set_dirList] = useState<Array<string>>([''])
   const [dirListMode, setDirListMode] = useState(false)
   const [fileList, set_fileList] = useState<Array<FileProps>>([])
+  const [page, set_page] = useState(1)
   const [term, setTerm] = useState('')
   const [focused, setFocused] = useState(-1)
   const [hoveredItem, setHoveredItem] = useState({
@@ -85,6 +116,8 @@ const List = (props: ListProps) => {
       .join('/')
     if (backWard === targetFolderName) {
       callInitialList()
+    } else if (!backWard || query.includes('search_api')) {
+      callInitialList()
     } else {
       const typedQuery = encodeURIComponent(`/${backWard}/`)
       window.history.pushState(null, typedQuery, '?d=' + typedQuery)
@@ -105,7 +138,10 @@ const List = (props: ListProps) => {
       set_dirList(fetch.dirs)
     }
     if (fetch?.files) {
-      set_fileList(fetch.files)
+      set_fileList(
+        fetch.files.sort((a: FileProps, b: FileProps) => b.mtimeMs - a.mtimeMs)
+      )
+      set_page(1)
     }
     if (fetch?.path) {
       set_path(fetch.path)
@@ -146,7 +182,6 @@ const List = (props: ListProps) => {
               </div>
             )}
           <div>{path.replace('/' + targetFolderName, '')}</div>
-          <UpdateButton />
           <input
             type="text"
             value={query}
@@ -161,22 +196,23 @@ const List = (props: ListProps) => {
           />
           <span>폴더: {dirList?.length}, </span>
           <span>파일: {fileList?.length}</span>
+          <UpdateButton />
           <div>
             <button disabled={query === '/api'} onClick={callInitialList}>
               홈
             </button>
-            {query !== '/api' && (
+            {query !== '/api' && !query.includes('search_api') && (
               <button onClick={callBackWard}>...{`<상위 폴더>`}</button>
             )}
           </div>
           <section>
             <button onClick={() => setDirListMode((prev) => !prev)}>
-              {dirListMode ? '아이콘 보기' : '목록 보기'}
+              {dirListMode ? '목록 보기' : '아이콘 보기'}
             </button>
             <div className="wrap">
               <ul
                 id="directories"
-                className={`${dirListMode ? 'list' : 'icon'}`}
+                className={`${dirListMode ? 'icon' : 'list'}`}
               >
                 {dirList.length > 0 &&
                   dirList.map((item, index) => (
@@ -233,16 +269,29 @@ const List = (props: ListProps) => {
             </div>
           </section>
           <section>
-            <ul id="files">
+            <ul id="files" className={`${dirListMode ? 'icon' : 'list'}`}>
               {fileList.length > 0 &&
-                fileList.map((item, index) => (
-                  <li key={item.file_id + item.name}>
-                    <button onClick={() => setVideoItem({ ...item, index })}>
+                [...fileList].slice(0, page * limit).map((item, index) => (
+                  <li
+                    key={item.file_id + item.name}
+                    className={`dir-box ${focused === index ? 'focused' : ''}`}
+                  >
+                    <button
+                      onClick={() => setVideoItem({ ...item, index })}
+                      className={`dir-btn`}
+                    >
                       {item.name}
                     </button>
                   </li>
                 ))}
             </ul>
+            <button
+              ref={more_ref}
+              disabled={page * limit >= fileList.length}
+              onClick={() => set_page((prev) => prev + 1)}
+            >
+              더보기
+            </button>
           </section>
         </>
       )}

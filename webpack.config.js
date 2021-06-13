@@ -1,34 +1,50 @@
 const path = require('path')
+const webpack = require('webpack')
 const HtmlWebPackPlugin = require('html-webpack-plugin')
+const CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin')
 const ESLintPlugin = require('eslint-webpack-plugin')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin')
 const TerserPlugin = require('terser-webpack-plugin')
+const ModuleNotFoundPlugin = require('react-dev-utils/ModuleNotFoundPlugin')
+const InterpolateHtmlPlugin = require('react-dev-utils/InterpolateHtmlPlugin')
 
-const node_env = process.env.NODE_ENV ?? 'development'
-console.log('node_env', node_env)
+process.env.NODE_ENV = process.env.NODE_ENV ?? 'development'
+
+const isDev = process.env.NODE_ENV === 'development'
+const isProd = process.env.NODE_ENV === 'production'
+
+const getClientEnvironment = require('./scripts/env')
+const env = getClientEnvironment()
+
 module.exports = {
-  mode: node_env,
+  mode: process.env.NODE_ENV,
   entry: './src/index.tsx',
   optimization: {
-    minimizer: [new TerserPlugin(), new CssMinimizerPlugin()],
+    minimizer: [
+      new TerserPlugin({
+        extractComments: false,
+      }),
+      new CssMinimizerPlugin(),
+    ],
   },
   output: {
     filename: '[name].[contenthash].js',
     sourceMapFilename: '[name].[contenthash].js.map',
     path: path.resolve(__dirname + '/build'),
   },
-  devtool: 'source-map',
+  devtool: isDev ? 'cheap-module-source-map' : false,
   devServer: {
     historyApiFallback: true,
     open: true,
     compress: true,
+    // quiet: true,
     hot: true,
-    client: {
-      overlay: false,
-    },
-    watchFiles: ['public/**/*'],
-    static: [path.resolve('./build')],
+    overlay: false,
+    clientLogLevel: 'silent',
+    watchContentBase: true,
+    contentBase: path.resolve('./public'),
+    index: 'index.html',
     port: 3000,
   },
   resolve: {
@@ -39,10 +55,16 @@ module.exports = {
       {
         test: /\.(css|scss)$/i,
         use: [
-          node_env === 'production'
-            ? MiniCssExtractPlugin.loader
-            : 'style-loader',
-          'css-loader',
+          isProd ? MiniCssExtractPlugin.loader : 'style-loader',
+          {
+            loader: 'css-loader',
+            options: {
+              importLoaders: 1,
+              modules: {
+                compileType: 'icss',
+              },
+            },
+          },
           'sass-loader',
         ],
       },
@@ -69,24 +91,20 @@ module.exports = {
   plugins: [
     new HtmlWebPackPlugin({
       template: './public/index.html',
-      filename: 'index.html',
     }),
+    new InterpolateHtmlPlugin(HtmlWebPackPlugin, env.raw),
+    isProd && new ModuleNotFoundPlugin('.'),
+    isDev && new CaseSensitivePathsPlugin(),
+    // isProd && new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
+    new webpack.DefinePlugin(env.stringified),
     new ESLintPlugin({
       extensions: ['js', 'jsx', 'ts', 'tsx'],
+      formatter: require.resolve('react-dev-utils/eslintFormatter'),
     }),
-    ...(node_env === 'production'
-      ? [
-          new MiniCssExtractPlugin({
-            filename:
-              node_env === 'development'
-                ? '[name].css'
-                : '[name].[contenthash].css',
-            chunkFilename:
-              node_env === 'development'
-                ? '[id].css'
-                : '[id].[contenthash].css',
-          }),
-        ]
-      : []),
-  ],
+    isProd &&
+      new MiniCssExtractPlugin({
+        filename: isDev ? '[name].css' : '[name].[contenthash].css',
+        chunkFilename: isDev ? '[id].css' : '[id].[contenthash].css',
+      }),
+  ].filter(Boolean),
 }
