@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { FileProps } from 'custom-types'
 import { url, targetFolderName } from './url'
+import createRandom from 'random-int'
 
 interface VideoProps {
   videoItem: FileProps
@@ -9,6 +10,7 @@ interface VideoProps {
 }
 const VideoComponent = (props: VideoProps) => {
   const [videoSrc, setVideoSrc] = useState('')
+  const [random, set_random] = useState(false)
   const video_ref = useRef() as React.MutableRefObject<HTMLVideoElement>
   useEffect(() => {
     function hashControl() {
@@ -24,6 +26,16 @@ const VideoComponent = (props: VideoProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useEffect(() => {
+    function rotateInit() {
+      const dirName = props.videoItem.path.replace(props.videoItem.name, '')
+      if (dirName.includes('역회전')) {
+        set_rotate(270)
+      } else if (dirName.includes('회전')) {
+        set_rotate(90)
+      } else {
+        set_rotate(0)
+      }
+    }
     if (props.videoItem.index !== undefined) {
       window.location.hash = String(props.videoItem.index)
     }
@@ -32,6 +44,7 @@ const VideoComponent = (props: VideoProps) => {
         props.videoItem.path.replace(`/${targetFolderName}/`, '')
       )}`
     )
+    rotateInit()
   }, [props.videoItem])
   const prev = () => {
     const prev = Number(window.location.hash.slice(1)) - 1
@@ -41,7 +54,20 @@ const VideoComponent = (props: VideoProps) => {
       window.location.hash = String(props.list.length - 1)
     }
   }
+  const getRandom = (now: number = 0): number => {
+    const randomid = createRandom(0, props.list.length)
+    if (now === randomid) {
+      return getRandom(randomid)
+    } else {
+      return randomid
+    }
+  }
   const next = () => {
+    if (random) {
+      const randomid = getRandom(Number(window.location.hash.slice(1)))
+      window.location.hash = String(randomid)
+      return
+    }
     const nextid = Number(window.location.hash.slice(1)) + 1
     if (nextid < props.list.length) {
       window.location.hash = String(nextid)
@@ -110,6 +136,9 @@ const VideoComponent = (props: VideoProps) => {
                   <button onClick={toggle_cover}>확장</button>
                   <button onClick={toggle_rotate}>회전</button>
                   <button onClick={toggleFullScreen}>전체</button>
+                  <button onClick={() => set_random((prev) => !prev)}>
+                    랜덤{random ? 'ing' : ''}
+                  </button>
                   <button onClick={prev}>이전</button>
                   <button onClick={next}>다음</button>
                 </div>
@@ -141,19 +170,18 @@ const VideoComponent = (props: VideoProps) => {
             <div className="middle"></div>
             <div className="right"></div>
           </div> */}
-          <div
-            className="video-container"
-            style={{
-              transform: `translate(${x_ward * 5}%,${y_ward * 5}%) scale(${
-                1 + z_ward * 0.2
-              })`,
-            }}
-          >
+          <div className="video-container">
             <video
               ref={video_ref}
               style={{
                 objectFit: cover ? 'cover' : 'contain',
-                transform: `rotate(${rotate}deg)`,
+                transform: `translate(${x_ward * 5}%,${y_ward * 5}%) scale(${
+                  1 + z_ward * 0.2
+                }) rotate(${rotate}deg)`,
+                width:
+                  rotate === 90 ? '100vh' : rotate === 270 ? '100vh' : '100%',
+                height:
+                  rotate === 90 ? '100vw' : rotate === 270 ? '100vw' : '100%',
               }}
               onEnded={next}
               src={videoSrc}

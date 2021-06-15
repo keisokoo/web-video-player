@@ -12,17 +12,21 @@ import UpdateButton from './UpdateButton'
 
 import { FileProps } from 'custom-types'
 import { targetFolderName } from './url'
+import shuffle from 'shuffle-array'
 
 interface ListProps {
   initialApiPath: string
 }
-const limit = 2
+const limit = 12
 const List = (props: ListProps) => {
+  const is_mount = useRef(true)
   const more_ref = useRef() as MutableRefObject<HTMLButtonElement>
+  const [scrollHeight, set_scrollHeight] = useState(0)
+  const [moreStatus, set_moreStatus] = useState(false)
   const [videoInitIndex, setVideoInitIndex] = useState(null as null | number)
   useEffect(() => {
-    function changeHistory(event?: PopStateEvent) {
-      if (window?.location?.search) {
+    async function changeHistory(event?: PopStateEvent) {
+      if (window?.location?.search && is_mount.current) {
         const params = new URLSearchParams(window.location.search)
         const qString = params.get('q')
         const dString = params.get('d')
@@ -39,32 +43,9 @@ const List = (props: ListProps) => {
         setVideoInitIndex(Number(window.location.hash.slice(1)))
       }
     }
-    const withNext = () => {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(true)
-        }, 500)
-      })
-    }
-    const callback = async function (mutationsList: any, observer: any) {
-      for (const mutation of mutationsList) {
-        if (mutation.isIntersecting) {
-          observer.unobserve(mutation.target)
-          set_page((prev) => {
-            const nextPage = prev + 1
-            return nextPage
-          })
-          await withNext()
-          observer.observe(mutation.target)
-        }
-      }
-    }
     changeHistory()
     window.addEventListener('popstate', changeHistory)
-    let observer = new IntersectionObserver(callback)
-    observer.observe(more_ref.current)
     return () => {
-      observer && observer.disconnect()
       window.removeEventListener('popstate', changeHistory)
     }
   }, [])
@@ -142,15 +123,25 @@ const List = (props: ListProps) => {
         fetch.files.sort((a: FileProps, b: FileProps) => b.mtimeMs - a.mtimeMs)
       )
       set_page(1)
+      if (fetch.files.length > limit) {
+        set_moreStatus(true)
+      } else {
+        set_moreStatus(false)
+      }
     }
     if (fetch?.path) {
       set_path(fetch.path)
     }
   }, [fetch])
+  const mixList = (list: any[]) => {
+    const test = shuffle([...list])
+    set_fileList([...test])
+  }
   const dropVideo = () => {
     window.location.hash = ''
     setVideoItem(null)
     setVideoInitIndex(null)
+    set_moreStatus(true)
   }
   useEffect(() => {
     function closeVideo(event: any) {
@@ -160,11 +151,55 @@ const List = (props: ListProps) => {
     }
     if (videoItem) {
       document.body.addEventListener('keyup', closeVideo)
+      set_moreStatus(false)
+    } else {
+      if (scrollHeight) {
+        document.documentElement.scrollTop = scrollHeight
+      }
     }
     return () => {
       document.body.removeEventListener('keyup', closeVideo)
     }
-  }, [videoItem])
+  }, [videoItem, scrollHeight])
+  useEffect(() => {
+    const withNext = () => {
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(true)
+        }, 500)
+      })
+    }
+    const callback = async function (mutationsList: any, observerState: any) {
+      for (const mutation of mutationsList) {
+        if (mutation.isIntersecting) {
+          observerState.unobserve(mutation.target)
+          set_page((prev) => {
+            const nextPage = prev + 1
+            return nextPage
+          })
+          await withNext()
+          observerState.observe(mutation.target)
+        }
+      }
+    }
+    let observer: any
+    if (moreStatus) {
+      if (more_ref.current) {
+        observer = new IntersectionObserver(callback)
+        observer.observe(more_ref.current)
+      }
+    }
+    return () => {
+      if (observer) {
+        observer.disconnect()
+      }
+    }
+  }, [moreStatus])
+  const handleVideoItemWithScrollHeight = (item: FileProps, index: number) => {
+    const docHeight = document.documentElement.scrollTop
+    set_scrollHeight(docHeight)
+    setVideoItem({ ...item, index })
+  }
   return (
     <>
       {videoItem ? (
@@ -208,6 +243,12 @@ const List = (props: ListProps) => {
           <section>
             <button onClick={() => setDirListMode((prev) => !prev)}>
               {dirListMode ? '목록 보기' : '아이콘 보기'}
+            </button>
+            <button
+              disabled={fileList.length < 2}
+              onClick={() => mixList(fileList)}
+            >
+              랜덤
             </button>
             <div className="wrap">
               <ul
@@ -268,23 +309,28 @@ const List = (props: ListProps) => {
               </ul>
             </div>
           </section>
-          <section>
-            <ul id="files" className={`${dirListMode ? 'icon' : 'list'}`}>
-              {fileList.length > 0 &&
-                [...fileList].slice(0, page * limit).map((item, index) => (
+          {fileList.length > 0 && (
+            <section>
+              <ul id="files" className={`${dirListMode ? 'icon' : 'list'}`}>
+                {[...fileList].slice(0, page * limit).map((item, index) => (
                   <li
                     key={item.file_id + item.name}
                     className={`dir-box ${focused === index ? 'focused' : ''}`}
                   >
                     <button
-                      onClick={() => setVideoItem({ ...item, index })}
+                      onClick={() =>
+                        handleVideoItemWithScrollHeight(item, index)
+                      }
                       className={`dir-btn`}
                     >
                       {item.name}
                     </button>
                   </li>
                 ))}
-            </ul>
+              </ul>
+            </section>
+          )}
+          {moreStatus && (
             <button
               ref={more_ref}
               disabled={page * limit >= fileList.length}
@@ -292,7 +338,7 @@ const List = (props: ListProps) => {
             >
               더보기
             </button>
-          </section>
+          )}
         </>
       )}
     </>

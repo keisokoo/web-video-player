@@ -29,6 +29,7 @@ li {
     flex-wrap: wrap;
     justify-content: flex-start;
     .dir-box {
+      user-select: none;
       text-align: center;
       display: flex;
       align-items: center;
@@ -141,6 +142,9 @@ video {
 .video-container {
   height: 100%;
   width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 .video-control {
   position: fixed;
@@ -156,7 +160,6 @@ video {
 .middle {
   text-align: center;
 }
-
 #files {
   &.icon {
     display: flex;
