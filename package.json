@@ -7,7 +7,7 @@
   "license": "ISC",
   "main": "index.js",
   "scripts": {
-    "start": "webpack serve --mode=development",
+    "start": "NODE_ENV=development webpack serve --mode=development",
     "build": "node scripts/build.js"
   },
   "eslintConfig": {
@@ -17,6 +17,7 @@
     ]
   },
   "dependencies": {
+    "@types/chromecast-caf-sender": "^1.0.4",
     "axios": "^0.21.1",
     "dayjs": "^1.10.5",
     "fs-extra": "^10.0.0",

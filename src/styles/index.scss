@@ -148,7 +148,7 @@ video {
 }
 .video-control {
   position: fixed;
-  width: 100%;
+  right: 0;
   z-index: 999;
   display: flex;
   justify-content: space-between;

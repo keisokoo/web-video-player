@@ -9,7 +9,8 @@ const TerserPlugin = require('terser-webpack-plugin')
 const ModuleNotFoundPlugin = require('react-dev-utils/ModuleNotFoundPlugin')
 const InterpolateHtmlPlugin = require('react-dev-utils/InterpolateHtmlPlugin')
 
-process.env.NODE_ENV = process.env.NODE_ENV ?? 'development'
+process.env.NODE_ENV =
+  process.env.NODE_ENV === 'development' ? 'development' : 'production'
 
 const isDev = process.env.NODE_ENV === 'development'
 const isProd = process.env.NODE_ENV === 'production'

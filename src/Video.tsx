@@ -20,6 +20,17 @@ const VideoComponent = (props: VideoProps) => {
       }
     }
     window.addEventListener('hashchange', hashControl, false)
+    const castButton = document.createElement('google-cast-launcher')
+    document.querySelector('#cast')?.appendChild(castButton)
+    function initializeCastApi() {
+      cast?.framework.CastContext.getInstance().setOptions({
+        receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+        autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+      })
+    }
+    if (window?.['__onGCastApiAvailable']) {
+      initializeCastApi()
+    }
     return () => {
       window.removeEventListener('hashchange', hashControl, false)
     }
@@ -39,13 +50,18 @@ const VideoComponent = (props: VideoProps) => {
     if (props.videoItem.index !== undefined) {
       window.location.hash = String(props.videoItem.index)
     }
-    setVideoSrc(
-      `${url}/${targetFolderName}/${encodeURIComponent(
-        props.videoItem.path.replace(`/${targetFolderName}/`, '')
-      )}`
-    )
+    const videoHref = `${url}/${targetFolderName}/${encodeURIComponent(
+      props.videoItem.path.replace(`/${targetFolderName}/`, '')
+    )}`
+    setVideoSrc(videoHref)
     rotateInit()
   }, [props.videoItem])
+  useEffect(() => {
+    if (video_ref.current) {
+      video_ref.current.src = videoSrc
+      video_ref.current.load()
+    }
+  }, [videoSrc])
   const prev = () => {
     const prev = Number(window.location.hash.slice(1)) - 1
     if (prev > -1) {
@@ -101,7 +117,7 @@ const VideoComponent = (props: VideoProps) => {
   const [x_ward, set_x_ward] = useState(0)
   const [y_ward, set_y_ward] = useState(0)
   const [z_ward, set_z_ward] = useState(0)
-  const [control_bar, set_control_bar] = useState(true)
+  const [control_bar, set_control_bar] = useState(false)
 
   const restorePosition = () => {
     set_x_ward(0)
@@ -122,6 +138,25 @@ const VideoComponent = (props: VideoProps) => {
   const toggleControlBar = () => {
     set_control_bar((prev) => !prev)
   }
+  const onLoadHandle = (e: any) => {
+    console.log(e.target.src)
+    // var mediaInfo = new chrome.cast.media.MediaInfo(
+    //   e.target.getAttributes('href'),
+    //   `video/${props.videoItem.extension.replace(/\./g, '')}`
+    // )
+    // var request = new chrome.cast.media.LoadRequest(mediaInfo)
+    // cast.framework.CastContext.getInstance()
+    //   .getCurrentSession()
+    //   ?.loadMedia(request)
+    //   .then(
+    //     function () {
+    //       console.log('Load succeed')
+    //     },
+    //     function (errorCode) {
+    //       console.log('Error code: ' + errorCode)
+    //     }
+    //   )
+  }
   return (
     <>
       {videoSrc && (
@@ -136,6 +171,7 @@ const VideoComponent = (props: VideoProps) => {
                   <button onClick={toggle_cover}>확장</button>
                   <button onClick={toggle_rotate}>회전</button>
                   <button onClick={toggleFullScreen}>전체</button>
+                  <button id="cast">캐스트</button>
                   <button onClick={() => set_random((prev) => !prev)}>
                     랜덤{random ? 'ing' : ''}
                   </button>
@@ -183,9 +219,9 @@ const VideoComponent = (props: VideoProps) => {
                 height:
                   rotate === 90 ? '100vw' : rotate === 270 ? '100vw' : '100%',
               }}
+              onLoadedMetadata={onLoadHandle}
               onEnded={next}
-              src={videoSrc}
-              autoPlay
+              // autoPlay
               controls
             ></video>
           </div>
